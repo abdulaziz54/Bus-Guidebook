@@ -1,0 +1,124 @@
+[
+    {
+        "name" : "Cumbria Classic Route",
+        "stops": [
+            {
+                "name": "Ravenstonedale Bus Depot",
+                "latitude": [
+                    54.42362664,
+                    54.42362664
+                ],
+                "longitude": [
+                    -2.400541699,
+                    -2.400541699
+                ]
+            },
+            {
+                "name": "Ravenstonedale Fat Lamb",
+                "latitude": [
+                    54.4159975172,
+                    54.4159969
+                ],
+                "longitude": [
+                    -2.4029020705,
+                    -2.403086982
+                ]
+            },
+            {
+                "name": "Ravenstonedale Town Head",
+                "latitude": [
+                    54.43000136,
+                    54.43000136
+                ],
+                "longitude": [
+                    -2.428566764,
+                    -2.428566764
+                ]
+            },
+            {
+                "name": "Ravenstonedale School",
+                "latitude": [
+                    54.43198557,
+                    54.43216602
+                ],
+                "longitude": [
+                    -2.429127025,
+                    -2.428928505
+                ]
+            },
+            {
+                "name": "Kirkby Stephen Station",
+                "latitude": [
+                    54.45482485,
+                    54.45482485
+                ],
+                "longitude": [
+                    -2.368455065,
+                    -2.368455065
+                ]
+            },
+            {
+                "name": "Kirkby Stephen Square",
+                "latitude": [
+                    54.47352224,
+                    54.47244496
+                ],
+                "longitude": [
+                    -2.348978934,
+                    -2.34856856
+                ]
+            },
+            {
+                "name": "Brough Clock",
+                "latitude": [
+                    54.52621733,
+                    54.52613706
+                ],
+                "longitude": [
+                    -2.318556628,
+                    -2.318324235
+                ]
+            },
+            {
+                "name": "Middleton in Teesdale",
+                "latitude": [
+                    54.62394761
+                ],
+                "longitude": [
+                    -2.08216464
+                ]
+            },
+            {
+                "name": "Eggleston",
+                "latitude": [
+                    54.60982995
+                ],
+                "longitude": [
+                    -2.002508212
+                ]
+            },
+            {
+                "name": "Barnard Castle Galgate",
+                "latitude": [
+                    54.54477609,
+                    54.54477609
+                ],
+                "longitude": [
+                    -1.924347814,
+                    -1.924347814
+                ]
+            },
+            {
+                "name": "Bowes Museum",
+                "latitude": [
+                    54.54207471,
+                    54.54207471
+                ],
+                "longitude": [
+                    -1.916361474,
+                    -1.916361474
+                ]
+            }
+        ]
+    }
+]
