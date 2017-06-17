@@ -10,6 +10,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.transition.Fade;
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -22,6 +23,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 
@@ -39,6 +41,7 @@ import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.Route;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import io.realm.Realm;
 import io.realm.RealmList;
@@ -61,6 +64,7 @@ public class MainActivity extends AppCompatActivity
     AutoCompleteTextView destinationTextEdit;
 
     ArrayList<Route> routes;
+    HashMap<String,Route> routeHashMap;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,11 +73,18 @@ public class MainActivity extends AppCompatActivity
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.setStatusBarColor(ContextCompat.getColor(this,R.color. colorPrimaryDark));
         routes = new ArrayList<>();
+        routeHashMap = new HashMap<>();
         Realm.init(this);
         prepareUIElements(savedInstanceState);
         setupGoogleApiClient();
         getBusStops();
 
+    }
+
+    private void setupWindowAnimations() {
+        Fade fade = new Fade();
+        fade.setDuration(1000);
+        getWindow().setEnterTransition(fade);
     }
 
     /**
@@ -111,6 +122,7 @@ public class MainActivity extends AppCompatActivity
      */
     private void prepareUIElements(Bundle savedInstanceState) {
         setContentView(R.layout.app_bar_main);
+        setupWindowAnimations();
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -128,6 +140,30 @@ public class MainActivity extends AppCompatActivity
         startTextEdit = (AutoCompleteTextView) findViewById(R.id.content_main_start_text);
         destinationTextEdit = (AutoCompleteTextView) findViewById(R.id.content_main_destination_text);
 
+        //Prepare Listener when a route start or end point is selected
+        AdapterView.OnItemSelectedListener routeItemSelected =  new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                routeSelectedCallback();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        };
+
+        //Listen to selection from start or destination list
+        startTextEdit.setOnItemSelectedListener(routeItemSelected);
+        destinationTextEdit.setOnItemSelectedListener(routeItemSelected);
+
+
+    }
+
+    /**
+     * Handles when an Item is selected
+     */
+    private void routeSelectedCallback() {
     }
 
     private void setupGoogleApiClient() {

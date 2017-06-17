@@ -37,4 +37,8 @@ public class Route extends RealmObject {
     public RealmList<BusStop> getStops() {
         return stops;
     }
+
+    public String getName() {
+        return name;
+    }
 }

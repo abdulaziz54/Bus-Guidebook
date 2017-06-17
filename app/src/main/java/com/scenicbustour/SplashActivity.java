@@ -42,7 +42,7 @@ public class SplashActivity extends AppCompatActivity {
             readDataTask = new ReadDataTask();
             readDataTask.execute(this);
         }else{
-            Intent intent = new Intent(this,MainActivity.class);
+            Intent intent = new Intent(this,RouteSelectorActivity.class);
             startActivity(intent);
             finish();
         }
