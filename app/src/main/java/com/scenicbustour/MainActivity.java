@@ -31,12 +31,16 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Places;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.Route;
 
@@ -64,7 +68,10 @@ public class MainActivity extends AppCompatActivity
     AutoCompleteTextView destinationTextEdit;
 
     ArrayList<Route> routes;
-    HashMap<String,Route> routeHashMap;
+    HashMap<String,BusStop> stopsHashMap;
+    Route selectedRoute;
+
+    String routeName;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,7 +80,8 @@ public class MainActivity extends AppCompatActivity
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.setStatusBarColor(ContextCompat.getColor(this,R.color. colorPrimaryDark));
         routes = new ArrayList<>();
-        routeHashMap = new HashMap<>();
+        stopsHashMap = new HashMap<>();
+        routeName = getIntent().getExtras().getString("Route");
         Realm.init(this);
         prepareUIElements(savedInstanceState);
         setupGoogleApiClient();
@@ -94,8 +102,12 @@ public class MainActivity extends AppCompatActivity
         Realm realm = Realm.getDefaultInstance();
         RealmResults<Route> realmResults = realm.where(Route.class).findAll();
         for(Route route : realmResults){
-            this.routes.add(route);
-            prepareAutoComplete(route.getStops());
+            if(route.getName().equalsIgnoreCase(routeName)) {
+                this.routes.add(route);
+                selectedRoute = route;
+                prepareAutoComplete(route.getStops());
+                break;
+            }
         }
     }
 
@@ -107,6 +119,7 @@ public class MainActivity extends AppCompatActivity
         String[] stopsNames = new String[stops.size()];
 
         for(int x = 0;x<stops.size();x++){
+            stopsHashMap.put(stops.get(x).getName(),stops.get(x));
             stopsNames[x] = stops.get(x).getName();
         }
 
@@ -141,21 +154,16 @@ public class MainActivity extends AppCompatActivity
         destinationTextEdit = (AutoCompleteTextView) findViewById(R.id.content_main_destination_text);
 
         //Prepare Listener when a route start or end point is selected
-        AdapterView.OnItemSelectedListener routeItemSelected =  new AdapterView.OnItemSelectedListener() {
+        AdapterView.OnItemClickListener routeItemSelected =  new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 routeSelectedCallback();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
             }
         };
 
         //Listen to selection from start or destination list
-        startTextEdit.setOnItemSelectedListener(routeItemSelected);
-        destinationTextEdit.setOnItemSelectedListener(routeItemSelected);
+        startTextEdit.setOnItemClickListener(routeItemSelected);
+        destinationTextEdit.setOnItemClickListener(routeItemSelected);
 
 
     }
@@ -164,6 +172,96 @@ public class MainActivity extends AppCompatActivity
      * Handles when an Item is selected
      */
     private void routeSelectedCallback() {
+        if(stopsHashMap.get(startTextEdit.getText().toString()) != null && stopsHashMap.get(destinationTextEdit.getText().toString()) != null){
+            //Get Start bus stop and destination bus stop
+            BusStop start = stopsHashMap.get(startTextEdit.getText().toString());
+            BusStop destination = stopsHashMap.get(destinationTextEdit.getText().toString());
+
+            //Get the index of those bus stops from the list of the stops
+            int startIndex = selectedRoute.getStops().indexOf(start);
+            int destinationIndex = selectedRoute.getStops().indexOf(destination);
+
+            //Get the full route of the user
+            ArrayList<BusStop> fullRoute;
+            if(startIndex < destinationIndex){
+                fullRoute = getForwardDirectionStops(startIndex,destinationIndex);
+            }else{
+                fullRoute = getReturnDirectionStops(startIndex,destinationIndex);
+            }
+
+            //Add all the bus stops the user will pass by on the mao
+            addMarkersToMap(fullRoute);
+
+        }
+    }
+
+    /**
+     * Takes the full route of the user and adds markers on the map
+     * @param fullRoute
+     */
+    private void addMarkersToMap(ArrayList<BusStop> fullRoute) {
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+        for (BusStop stop: fullRoute){
+            Marker marker = this.mMap.addMarker(new MarkerOptions().position(new LatLng(stop.getLatitude(), stop.getLongitude())).snippet(Integer.toString(1)));
+            builder.include(marker.getPosition());
+
+        }
+        LatLngBounds bounds = builder.build();
+        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 10);
+        this.mMap.animateCamera(cu);
+    }
+
+    @Override
+    protected void onResume() {
+        mapView.onResume();
+        super.onResume();
+    }
+
+    @Override
+    protected void onStart() {
+        mapView.onStart();
+        super.onStart();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mapView.onDestroy();
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onStop() {
+        mapView.onStart();
+        super.onStop();
+    }
+
+    /**
+     * Get the list of bus stops when the user is moving in the forward direction
+     * @param startIndex
+     * @param destinationIndex
+     * @return
+     */
+    private ArrayList<BusStop> getForwardDirectionStops(int startIndex, int destinationIndex){
+        ArrayList<BusStop> stops = new ArrayList<>();
+        for(int x = startIndex ; x <= destinationIndex ; x++){
+            stops.add(selectedRoute.getStops().get(x));
+        }
+        return  stops;
+    }
+
+    /**
+     * Gets the list of bus stops when the user is moving in the reverse direction
+     * @param startIndex
+     * @param destinationIndex
+     * @return
+     */
+    private ArrayList<BusStop> getReturnDirectionStops(int startIndex, int destinationIndex){
+        ArrayList<BusStop> stops = new ArrayList<>();
+        for(int x = startIndex ; x >= destinationIndex ; x--){
+            stops.add(selectedRoute.getStops().get(x));
+        }
+        return  stops;
     }
 
     private void setupGoogleApiClient() {
