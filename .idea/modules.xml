@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Bus-Guidebook.iml" filepath="$PROJECT_DIR$/Bus-Guidebook.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://C:\Users\amr_f\Documents\Development\Other People Projects\Bus-Guidebook\app\app.iml" filepath="C:\Users\amr_f\Documents\Development\Other People Projects\Bus-Guidebook\app\app.iml" />
       <module fileurl="file://C:\Users\amr_f\Documents\Development\Other People Projects\Bus-Guidebook\guidebook.iml" filepath="C:\Users\amr_f\Documents\Development\Other People Projects\Bus-Guidebook\guidebook.iml" />
     </modules>
   </component>

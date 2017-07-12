@@ -30,7 +30,7 @@ public class SplashActivity extends AppCompatActivity {
     ReadDataTask readDataTask;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+        protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         Realm.init(this);
