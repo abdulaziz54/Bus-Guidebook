@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import io.realm.Realm;
+import io.realm.RealmConfiguration;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -34,6 +35,11 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         Realm.init(this);
+        RealmConfiguration config = new RealmConfiguration
+                .Builder()
+                .deleteRealmIfMigrationNeeded()
+                .build();
+        Realm.setDefaultConfiguration(config);
         iconImage = (ImageView) findViewById(R.id.activity_splash_icon);
         constraintLayout = (ConstraintLayout) findViewById(R.id.activity_splash_parent);
         Realm realm = Realm.getDefaultInstance();
@@ -78,6 +84,10 @@ public class SplashActivity extends AppCompatActivity {
                         for(int z = 0;  z< longitudesJSON.length() ; z++){
                             busStop.withLongitude(Float.parseFloat(String.valueOf(longitudesJSON.getDouble(z))));
                         }
+                        JSONArray timesJSON = stop.getJSONArray("time");
+                        for(int z=0;z<timesJSON.length();z++){
+                            busStop.addTime(timesJSON.getString(z));
+                        }
 
                         route.addStop(busStop);
                     }
@@ -97,7 +107,7 @@ public class SplashActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Activity activity) {
-            Intent intent = new Intent(activity,MainActivity.class);
+            Intent intent = new Intent(activity,RouteSelectorActivity.class);
             startActivity(intent);
             finish();
             super.onPostExecute(activity);
