@@ -3,9 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior" tools:context="com.scenicbustour.MainActivity"
-    tools:showIn="@layout/app_bar_main">
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,19 +22,19 @@
 
 
 
-            <AutoCompleteTextView
-                android:layout_width="match_parent"
-                android:id="@+id/content_main_start_text"
+        <AutoCompleteTextView
+            android:layout_width="match_parent"
+            android:id="@+id/content_main_start_text"
 
-                android:hint="Start"
-                android:layout_height="wrap_content" />
+            android:hint="Start"
+            android:layout_height="wrap_content" />
 
 
-            <AutoCompleteTextView
-                android:layout_width="match_parent"
-                android:hint="Destination"
-                android:id="@+id/content_main_destination_text"
-                android:layout_height="wrap_content" />
+        <AutoCompleteTextView
+            android:layout_width="match_parent"
+            android:hint="Destination"
+            android:id="@+id/content_main_destination_text"
+            android:layout_height="wrap_content" />
 
     </LinearLayout>
 
@@ -49,4 +47,21 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         tools:layout_editor_absoluteY="96dp" />
+
+    <android.support.design.widget.FloatingActionButton android:id="@+id/fab"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end" android:layout_margin="@dimen/fab_margin"
+        app:srcCompat="@android:drawable/ic_menu_search"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="8dp"
+        app:layout_constraintHorizontal_bias="0.975"
+        app:layout_constraintTop_toTopOf="@+id/mapView"
+        android:layout_marginTop="8dp"
+        app:layout_constraintVertical_bias="1.0" />
+
+
 </android.support.constraint.ConstraintLayout>
