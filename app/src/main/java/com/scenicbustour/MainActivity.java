@@ -1,6 +1,7 @@
 package com.scenicbustour;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
@@ -10,6 +11,7 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.transition.Fade;
 import android.util.Log;
@@ -54,6 +56,7 @@ import io.realm.RealmResults;
 
 public class MainActivity extends AppCompatActivity implements MapFragment.OnFragmentInteractionListener {
 
+    Fragment currentFragment;
        @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -106,10 +109,22 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
         setupWindowAnimations();
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        MapFragment mapFragment =  new MapFragment().withRouteName(getIntent().getExtras().getString("Route"));
         getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
-                ,new MapFragment().withRouteName(getIntent().getExtras().getString("Route")),
+                ,mapFragment,
                 MapFragment.TAG).commit();
+        currentFragment = mapFragment;
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(requestCode == SearchActivity.REQUEST_CODE && resultCode == RESULT_OK){
+            if(currentFragment != null){
+                currentFragment.onActivityResult(requestCode,resultCode,data);
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override

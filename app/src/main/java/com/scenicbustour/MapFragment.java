@@ -1,9 +1,12 @@
 package com.scenicbustour;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -23,10 +26,19 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,12 +52,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.scenicbustour.Helpers.KdTree;
 import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.RealmString;
 import com.scenicbustour.Models.Route;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
 import io.realm.Realm;
 import io.realm.RealmList;
@@ -64,7 +83,8 @@ public class MapFragment extends Fragment
     public static final String TAG = "MAP_FRAGMENT";
     private OnFragmentInteractionListener mListener;
     private View rootView;
-
+    private KdTree kdTree;
+    private HashMap<KdTree.XYZPoint, BusStop> pointBusStopHashMap;
     private GoogleApiClient mGoogleApiClient;
     private boolean mLocationPermissionGranted;
     private final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
@@ -75,14 +95,20 @@ public class MapFragment extends Fragment
     private CameraPosition mCameraPosition;
     private LatLng mDefaultLocation;
 
-    AutoCompleteTextView startTextEdit;
-    AutoCompleteTextView destinationTextEdit;
+    private Marker currentLocationMarker;
+
+    private FusedLocationProviderClient mFusedLocationClient;
+
+    private TextView nearestBusStopTextView;
+    private TextView busTimeTextView;
+
 
     ArrayList<Route> routes;
     HashMap<String, BusStop> stopsHashMap;
     Route selectedRoute;
 
     String routeName;
+    String[] stopsNames;
 
 
     public MapFragment() {
@@ -105,34 +131,117 @@ public class MapFragment extends Fragment
         rootView = inflater.inflate(R.layout.fragment_map, container, false);
         routes = new ArrayList<>();
         stopsHashMap = new HashMap<>();
+        pointBusStopHashMap = new HashMap<>();
         FloatingActionButton fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                Intent intent = new Intent(getActivity(),SearchActivity.class);
+                Bundle bundle = new Bundle();
+                bundle.putStringArray("stops",stopsNames);
+                intent.putExtras(bundle);
+                getActivity().startActivityForResult(intent,SearchActivity.REQUEST_CODE);
             }
         });
         mapView = (MapView) rootView.findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
-        startTextEdit = (AutoCompleteTextView) rootView.findViewById(R.id.content_main_start_text);
-        destinationTextEdit = (AutoCompleteTextView) rootView.findViewById(R.id.content_main_destination_text);
+        nearestBusStopTextView = (TextView) rootView.findViewById(R.id.nearest_bus_stop);
+        busTimeTextView = (TextView) rootView.findViewById(R.id.time_to_bus);
 
-        //Prepare Listener when a route start or end point is selected
-        AdapterView.OnItemClickListener routeItemSelected = new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                routeSelectedCallback();
-            }
-        };
 
-        //Listen to selection from start or destination list
-        startTextEdit.setOnItemClickListener(routeItemSelected);
-        destinationTextEdit.setOnItemClickListener(routeItemSelected);
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getActivity());
+        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+        }else{
+            mLocationPermissionGranted = true;
+            getDeviceLocation();
+        }
+        subscribeToLocationUpdate();
+
+
 
         // Inflate the layout for this fragment
         return rootView;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void getDeviceLocation(){
+        if(mLocationPermissionGranted) {
+            mFusedLocationClient.getLastLocation().addOnSuccessListener(getActivity(), new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+                    updateDeviceLocation(location);
+
+
+                }
+            });
+        }
+    }
+
+    private void updateDeviceLocation(Location location) {
+        List<KdTree.XYZPoint> nearestPoints = new ArrayList<>(kdTree.nearestNeighbourSearch(1,new KdTree.XYZPoint(54.42362664,-2.400541699)));
+        BusStop stop = pointBusStopHashMap.get(nearestPoints.get(0));
+        if(currentLocationMarker == null){
+            BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(android.R.drawable.ic_menu_mylocation);
+            currentLocationMarker = mMap.addMarker(
+                    new MarkerOptions()
+                            .position(new LatLng(location.getLatitude(), location.getLongitude())).snippet(Integer.toString(1))
+                            .icon(icon)
+                            .title("Your Location")
+                            .snippet("You are here"));
+            CameraUpdate cu = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+            mMap.animateCamera(cu);
+
+        }else{
+            currentLocationMarker.setPosition(new LatLng(location.getLatitude(),location.getLongitude()));
+        }
+
+
+        nearestBusStopTextView.setText(stop.getName());
+        Date now = new Date();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm");
+        try {
+            busTimeTextView.setText(stop.getNearestTime(simpleDateFormat.format(now)));
+        }catch (Exception e){
+            Log.e("time","can't get time");
+        }
+
+
+    }
+
+    protected void subscribeToLocationUpdate() {
+        final LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(10000);
+        mLocationRequest.setFastestInterval(5000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(mLocationRequest);
+        SettingsClient client = LocationServices.getSettingsClient(getActivity());
+        Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
+        task.addOnSuccessListener(getActivity(), new OnSuccessListener<LocationSettingsResponse>() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+                mFusedLocationClient.requestLocationUpdates(mLocationRequest,new LocationCallback(){
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+                        updateDeviceLocation(locationResult.getLastLocation());
+                        super.onLocationResult(locationResult);
+                    }
+                },null);
+            }
+        });
     }
 
     @Override
@@ -204,47 +313,23 @@ public class MapFragment extends Fragment
      * Prepares the autocomplete suggestions by get an array of all the names of the bus stops
      * @param stops
      */
+
     private void prepareAutoComplete(RealmList<BusStop> stops) {
-        String[] stopsNames = new String[stops.size()];
+        List<KdTree.XYZPoint> points = new ArrayList<>();
+        stopsNames = new String[stops.size()];
 
         for (int x = 0; x < stops.size(); x++) {
+
+            KdTree.XYZPoint point  =  new KdTree.XYZPoint(stops.get(x).getLatitude(),stops.get(x).getLongitude());
+            points.add(point);
+            pointBusStopHashMap.put(point,stops.get(x));
             stopsHashMap.put(stops.get(x).getName(), stops.get(x));
             stopsNames[x] = stops.get(x).getName();
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>
-                (getContext(), android.R.layout.simple_list_item_1, stopsNames);
-        startTextEdit.setAdapter(adapter);
-        destinationTextEdit.setAdapter(adapter);
+        kdTree = new KdTree(points);
     }
 
-
-    /**
-     * Handles when an Item is selected
-     */
-    private void routeSelectedCallback() {
-        if (stopsHashMap.get(startTextEdit.getText().toString()) != null && stopsHashMap.get(destinationTextEdit.getText().toString()) != null) {
-            //Get Start bus stop and destination bus stop
-            BusStop start = stopsHashMap.get(startTextEdit.getText().toString());
-            BusStop destination = stopsHashMap.get(destinationTextEdit.getText().toString());
-
-            //Get the index of those bus stops from the list of the stops
-            int startIndex = selectedRoute.getStops().indexOf(start);
-            int destinationIndex = selectedRoute.getStops().indexOf(destination);
-
-            //Get the full route of the user
-            ArrayList<BusStop> fullRoute;
-            if (startIndex < destinationIndex) {
-                fullRoute = getForwardDirectionStops(startIndex, destinationIndex);
-            } else {
-                fullRoute = getReturnDirectionStops(startIndex, destinationIndex);
-            }
-
-            //Add all the bus stops the user will pass by on the mao
-            addMarkersToMap(fullRoute);
-
-        }
-    }
 
     /**
      * Takes the full route of the user and adds markers on the map
@@ -361,39 +446,7 @@ public class MapFragment extends Fragment
 
     }
 
-    private void getDeviceLocation() {
-    /*
-     * Before getting the device location, you must check location
-     * permission, as described earlier in the tutorial. Then:
-     * Get the best and most recent location of the device, which may be
-     * null in rare cases when a location is not available.
-     */
-        if (mLocationPermissionGranted) {
-            if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                    && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                updateLocationUI();
-                return;
-            }
-            mLastKnownLocation = LocationServices.FusedLocationApi
-                    .getLastLocation(mGoogleApiClient);
-        }
 
-        // Set the map's camera position to the current location of the device.
-        if (mCameraPosition != null) {
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
-        } else if (mLastKnownLocation != null) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                    new LatLng(mLastKnownLocation.getLatitude(),
-                            mLastKnownLocation.getLongitude()), 14.0f));
-        } else {
-            Log.d("Main", "Current location is null. Using defaults.");
-            if (mDefaultLocation == null) {
-                mDefaultLocation = new LatLng(54.42362664, -2.400541699);
-            }
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, 14.0f));
-            mMap.getUiSettings().setMyLocationButtonEnabled(false);
-        }
-    }
 
 
     @Override
@@ -407,56 +460,58 @@ public class MapFragment extends Fragment
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mLocationPermissionGranted = true;
+                    getDeviceLocation();
                 }
             }
         }
-        updateLocationUI();
     }
 
-    private void updateLocationUI() {
-        if (mMap == null) {
-            if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                    ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-               requestLocationPermission();
+
+    @Override
+    public void onPause() {
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
             }
-            mMap.setMyLocationEnabled(true);
-        }
-
-    }
-
-    private void requestLocationPermission(){
-         /*
-     * Request location permission, so that we can get the location of the
-     * device. The result of the permission request is handled by a callback,
-     * onRequestPermissionsResult.
-     */
-        if (ContextCompat.checkSelfPermission(this.getContext(),
-                android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            mLocationPermissionGranted = true;
-        } else {
-            ActivityCompat.requestPermissions(getActivity(),
-                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                    PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
-        }
-
-        if (mLocationPermissionGranted) {
-            mMap.setMyLocationEnabled(true);
-            mMap.getUiSettings().setMyLocationButtonEnabled(true);
-        } else {
-            mMap.setMyLocationEnabled(false);
-            mMap.getUiSettings().setMyLocationButtonEnabled(false);
-            mLastKnownLocation = null;
-        }
+        });
+        super.onPause();
     }
 
     @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        routeSelectedCallback(data.getStringExtra("start"),data.getStringExtra("destination"));
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    /**
+     * Handles when an Item is selected
+     */
+    private void routeSelectedCallback(String startStop, String destinationStop) {
+        if(startStop != null && destinationStop != null){
+            //Get Start bus stop and destination bus stop
+            BusStop start = stopsHashMap.get(startStop);
+            BusStop destination = stopsHashMap.get(destinationStop);
+
+            //Get the index of those bus stops from the list of the stops
+            int startIndex = selectedRoute.getStops().indexOf(start);
+            int destinationIndex = selectedRoute.getStops().indexOf(destination);
+
+            //Get the full route of the user
+            ArrayList<BusStop> fullRoute;
+            if(startIndex < destinationIndex){
+                fullRoute = getForwardDirectionStops(startIndex,destinationIndex);
+            }else{
+                fullRoute = getReturnDirectionStops(startIndex,destinationIndex);
+            }
+
+            //Add all the bus stops the user will pass by on the mao
+            addMarkersToMap(fullRoute);
+
+        }
+    }
+    @Override
     public void onMapReady(GoogleMap googleMap) {
         this.mMap = googleMap;
-        // Turn on the My Location layer and the related control on the map.
-        updateLocationUI();
-
-        // Get the current location of the device and set the position of the map.
-        getDeviceLocation();
     }
 }

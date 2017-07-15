@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout android:layout_width="340dp"
+    android:layout_height="200dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="20dp"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:id="@+id/linearLayout"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <android.support.design.widget.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:theme="@style/AppTheme.LoginInputsStyle"
+
+        >
+
+        <AutoCompleteTextView
+            android:layout_width="match_parent"
+            android:id="@+id/content_main_start_text"
+            android:textColor="@android:color/black"
+            android:hint="Start (required)"
+            android:layout_height="wrap_content" />
+
+
+    </android.support.design.widget.TextInputLayout>
+
+    <android.support.design.widget.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:theme="@style/AppTheme.LoginInputsStyle"
+
+        >
+
+
+
+    <AutoCompleteTextView
+        android:layout_width="match_parent"
+        android:textColor="@android:color/black"
+        android:hint="Destination (required)"
+        android:id="@+id/content_main_destination_text"
+        android:layout_height="wrap_content" />
+    </android.support.design.widget.TextInputLayout>
+</LinearLayout>
