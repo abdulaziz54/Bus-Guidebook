@@ -52,6 +52,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.scenicbustour.Helpers.KdTree;
@@ -66,6 +67,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import amr.com.routing.RouteException;
+import amr.com.routing.Routing;
+import amr.com.routing.RoutingListener;
 import io.realm.Realm;
 import io.realm.RealmList;
 import io.realm.RealmResults;
@@ -78,7 +82,7 @@ import io.realm.RealmResults;
  * to handle interaction events.
  */
 public class MapFragment extends Fragment
-        implements GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks, OnMapReadyCallback {
+        implements GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks, OnMapReadyCallback,RoutingListener {
 
     public static final String TAG = "MAP_FRAGMENT";
     private OnFragmentInteractionListener mListener;
@@ -109,6 +113,7 @@ public class MapFragment extends Fragment
 
     String routeName;
     String[] stopsNames;
+    Snackbar snackbar;
 
 
     public MapFragment() {
@@ -278,6 +283,31 @@ public class MapFragment extends Fragment
         mListener = null;
     }
 
+    @Override
+    public void onRoutingFailure(RouteException e) {
+
+        if(snackbar == null || !snackbar.isShownOrQueued()) {
+            snackbar = Snackbar.make(rootView, "Check Internet Conntection", Snackbar.LENGTH_INDEFINITE);
+            snackbar.show();
+        }
+    }
+
+    @Override
+    public void onRoutingStart() {
+
+    }
+
+    @Override
+    public void onRoutingSuccess(ArrayList<amr.com.routing.Route> route, int shortestRouteIndex) {
+
+        mMap.addPolyline(route.get(shortestRouteIndex).getPolyOptions());
+    }
+
+    @Override
+    public void onRoutingCancelled() {
+
+    }
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -336,6 +366,7 @@ public class MapFragment extends Fragment
      * @param fullRoute
      */
     private void addMarkersToMap(ArrayList<BusStop> fullRoute) {
+        mMap.clear();
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         int index = 0;
         BitmapDescriptor icon;
@@ -346,6 +377,12 @@ public class MapFragment extends Fragment
                 icon = BitmapDescriptorFactory.fromResource(R.drawable.finish_icon);
             else
                 icon = BitmapDescriptorFactory.fromResource(R.drawable.bus_stop);
+
+            if(index != fullRoute.size()-1){
+                Routing mRoute=new Routing.Builder().travelMode().withListener(this).waypoints(
+                        (new LatLng(stop.getLatitude(),stop.getLongitude())), (new LatLng(fullRoute.get(index+1).getLatitude(),fullRoute.get(index+1).getLongitude()))).build();
+                mRoute.execute();
+            }
             StringBuilder times = new StringBuilder();
             for(RealmString time : stop.getTimes()){
                 times.append(time.getValue());
@@ -469,12 +506,14 @@ public class MapFragment extends Fragment
 
     @Override
     public void onPause() {
-        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                super.onLocationResult(locationResult);
-            }
-        });
+        if(mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    super.onLocationResult(locationResult);
+                }
+            });
+        }
         super.onPause();
     }
 
