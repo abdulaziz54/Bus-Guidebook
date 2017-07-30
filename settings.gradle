@@ -1,1 +1,1 @@
-include ':app',':routing'
+include ':app',':routing' , 'kotlin-google-places'
