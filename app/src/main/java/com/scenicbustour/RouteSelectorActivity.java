@@ -6,6 +6,8 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.transition.Slide;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 
 import com.scenicbustour.Models.Route;
@@ -25,6 +27,8 @@ public class RouteSelectorActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_route_selector);
         setupWindowAnimations();
+
+
         routes = new ArrayList<>();
         Realm.init(this);
         adapter = new RouteSelectorArrayAdapter(this,routes);
