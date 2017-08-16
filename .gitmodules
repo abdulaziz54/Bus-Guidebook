@@ -1,0 +1,3 @@
+[submodule "kotlin-google-places"]
+	path = kotlin-google-places
+	url = git@github.com:amrfarid140/kotlin-google-places.git
