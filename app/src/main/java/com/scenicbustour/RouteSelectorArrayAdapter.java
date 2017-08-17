@@ -20,10 +20,10 @@ import java.util.ArrayList;
 
 public class RouteSelectorArrayAdapter extends RecyclerView.Adapter<RouteSelectorArrayAdapter.ViewHolder>{
 
-    AppCompatActivity activity;
-    ArrayList<Route> routes;
+    private AppCompatActivity activity;
+    private ArrayList<Route> routes;
 
-    public RouteSelectorArrayAdapter(AppCompatActivity activity,ArrayList<Route> routes){
+    RouteSelectorArrayAdapter(AppCompatActivity activity, ArrayList<Route> routes){
         this.activity = activity;
         this.routes = routes;
 
@@ -55,15 +55,15 @@ public class RouteSelectorArrayAdapter extends RecyclerView.Adapter<RouteSelecto
         return routes.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder{
+    class ViewHolder extends RecyclerView.ViewHolder{
 
         TextView routeNameTextView;
         FrameLayout routeItemParent;
 
-        public ViewHolder(View itemView) {
+        ViewHolder(View itemView) {
             super(itemView);
-            routeItemParent = (FrameLayout) itemView.findViewById(R.id.route_item_parent);
-            routeNameTextView = (TextView) itemView.findViewById(R.id.route_item_name);
+            routeItemParent =  itemView.findViewById(R.id.route_item_parent);
+            routeNameTextView = itemView.findViewById(R.id.route_item_name);
         }
     }
 }

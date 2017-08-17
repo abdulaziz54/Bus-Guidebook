@@ -5,12 +5,13 @@
     android:id="@+id/activity_splash_parent"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/white"
     tools:context="com.scenicbustour.SplashActivity">
 
     <ImageView
         android:id="@+id/activity_splash_icon"
-        android:layout_width="99dp"
-        android:layout_height="91dp"
+        android:layout_width="220dp"
+        android:layout_height="120dp"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
@@ -19,5 +20,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@mipmap/ic_launcher_round" />
+        app:srcCompat="@drawable/logo" />
 </android.support.constraint.ConstraintLayout>

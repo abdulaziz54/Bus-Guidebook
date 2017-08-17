@@ -7,7 +7,10 @@ import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.animation.Animation;
+import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
+import android.widget.Space;
 
 import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.Route;
@@ -42,16 +45,35 @@ public class SplashActivity extends AppCompatActivity {
         Realm.setDefaultConfiguration(config);
         iconImage = (ImageView) findViewById(R.id.activity_splash_icon);
         constraintLayout = (ConstraintLayout) findViewById(R.id.activity_splash_parent);
-        Realm realm = Realm.getDefaultInstance();
+        final Realm realm = Realm.getDefaultInstance();
 
-        if(realm.where(Route.class).findAll().size() == 0) {
-            readDataTask = new ReadDataTask();
-            readDataTask.execute(this);
-        }else{
-            Intent intent = new Intent(this,RouteSelectorActivity.class);
-            startActivity(intent);
-            finish();
-        }
+        ScaleAnimation scaleAnimation = new ScaleAnimation(0f, 1f, 0f, 1f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        scaleAnimation.setDuration(2000); // scale to 3 times as big in 3 seconds
+        scaleAnimation.setInterpolator(this, android.R.interpolator.accelerate_decelerate);
+        scaleAnimation.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                if(realm.where(Route.class).findAll().size() == 0) {
+                    readDataTask = new ReadDataTask();
+                    readDataTask.execute(SplashActivity.this);
+                }else{
+                    Intent intent = new Intent(SplashActivity.this,RouteSelectorActivity.class);
+                    startActivity(intent);
+                    finish();
+                }
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+        iconImage.startAnimation(scaleAnimation);
 
     }
 

@@ -83,8 +83,8 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
+//        getMenuInflater().inflate(R.menu.main, menu);
+        return false;
     }
 
     @Override
@@ -109,8 +109,8 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
     private void prepareUIElements(Bundle savedInstanceState) {
         setContentView(R.layout.app_bar_main);
         setupWindowAnimations();
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+//        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+//        setSupportActionBar(toolbar);
         MapFragment mapFragment =  new MapFragment().withRouteName(getIntent().getExtras().getString("Route"));
         getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
                 ,mapFragment,
