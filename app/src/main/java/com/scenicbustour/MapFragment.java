@@ -5,6 +5,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.Uri;
@@ -60,6 +63,8 @@ import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.RealmString;
 import com.scenicbustour.Models.Route;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -67,6 +72,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import amr.com.google.places.NearbySearchListener;
+import amr.com.google.places.Place;
+import amr.com.google.places.PlacesWrapper;
 import amr.com.routing.RouteException;
 import amr.com.routing.Routing;
 import amr.com.routing.RoutingListener;
@@ -367,23 +375,23 @@ public class MapFragment extends Fragment
      */
     private void addMarkersToMap(ArrayList<BusStop> fullRoute) {
         mMap.clear();
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        final LatLngBounds.Builder builder = new LatLngBounds.Builder();
         int index = 0;
-        BitmapDescriptor icon;
-        for (BusStop stop : fullRoute) {
+        Bitmap icon;
+        for (final BusStop stop : fullRoute) {
             if (index == 0)
-                icon = BitmapDescriptorFactory.fromResource(R.drawable.start_icon);
+                icon = getBitmap(R.drawable.ic_pin_green);
             else if (index == fullRoute.size() - 1)
-                icon = BitmapDescriptorFactory.fromResource(R.drawable.finish_icon);
+                icon = getBitmap(R.drawable.ic_place_pin);
             else
-                icon = BitmapDescriptorFactory.fromResource(R.drawable.bus_stop);
+                icon = getBitmap(R.drawable.ic_bus_stop);
 
             if(index != fullRoute.size()-1){
                 Routing mRoute=new Routing.Builder().travelMode().withListener(this).waypoints(
                         (new LatLng(stop.getLatitude(),stop.getLongitude())), (new LatLng(fullRoute.get(index+1).getLatitude(),fullRoute.get(index+1).getLongitude()))).build();
                 mRoute.execute();
             }
-            StringBuilder times = new StringBuilder();
+            final StringBuilder times = new StringBuilder();
             for(RealmString time : stop.getTimes()){
                 times.append(time.getValue());
                 times.append("     ");
@@ -391,10 +399,31 @@ public class MapFragment extends Fragment
             Marker marker = this.mMap.addMarker(
                     new MarkerOptions()
                             .position(new LatLng(stop.getLatitude(), stop.getLongitude())).snippet(Integer.toString(1))
-                            .icon(icon)
+                            .icon(BitmapDescriptorFactory.fromBitmap(icon))
                             .title(stop.getName())
                             .snippet(times.toString()));
             builder.include(marker.getPosition());
+            PlacesWrapper placesWrapper = new PlacesWrapper("AIzaSyDO4pqQ98AfnrVclR3j27bQPFo_EelalHk");
+            placesWrapper.buildNearbySearch(stop.getLatitude(), stop.getLongitude(), 3000, new NearbySearchListener() {
+                @Override
+                public void onResultsReady(@NotNull List<Place> places) {
+                    for(Place place : places){
+                        Marker marker = mMap.addMarker(
+                                new MarkerOptions()
+                                        .position(new LatLng(place.getLocation().getLatitude(), place.getLocation().getLongitude()))
+                                        .icon(BitmapDescriptorFactory.fromBitmap(getBitmap(R.drawable.ic_pin_blue)))
+                                        .title(place.getName()));
+                        builder.include(marker.getPosition());
+                    }
+                }
+
+                @Override
+                public void onError(@NotNull Throwable throwable) {
+
+                    Log.e("NearbySearchListener", String.format("Error Getting Place: %s",throwable.getMessage() ));
+
+                }
+            }).enqueueSearch();
             index++;
 
         }
@@ -403,6 +432,16 @@ public class MapFragment extends Fragment
         this.mMap.animateCamera(cu);
     }
 
+    private Bitmap getBitmap(int drawableRes) {
+        Drawable drawable = getResources().getDrawable(drawableRes);
+        Canvas canvas = new Canvas();
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bitmap);
+        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        drawable.draw(canvas);
+
+        return bitmap;
+    }
     @Override
     public void onResume() {
         mapView.onResume();
