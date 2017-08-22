@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="horizontal" android:layout_width="match_parent"
+    android:id="@+id/place_item_parent"
+
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="center_vertical"
+        android:id="@+id/place_icon" />
+
+    <TextView
+        android:id="@+id/place_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="50dp"
+        android:layout_marginLeft="50dp"
+        android:fontFamily="@font/cairo_extralight"
+        android:textAppearance="@style/TextAppearance.AppCompat"
+        android:textColor="@android:color/black"
+        tools:text="test text @string/appbar_scrolling_view_behavior" />
+
+    <ImageView
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="end|center_vertical"
+        android:tint="@color/colorPrimary"
+        android:tintMode="src_in"
+        android:src="@drawable/ic_keyboard_arrow_right_black_24dp"
+        />
+
+</FrameLayout>

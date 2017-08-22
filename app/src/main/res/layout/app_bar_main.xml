@@ -17,6 +17,7 @@
 <android.support.design.widget.BottomNavigationView
     android:layout_width="match_parent"
     android:layout_gravity="bottom"
+    android:id="@+id/bottom_navigation"
     app:menu="@menu/activity_main_drawer"
     android:layout_height="?android:attr/actionBarSize">
 </android.support.design.widget.BottomNavigationView>

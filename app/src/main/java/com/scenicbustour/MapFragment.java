@@ -97,7 +97,7 @@ public class MapFragment extends Fragment
     private View rootView;
     private KdTree kdTree;
     private HashMap<KdTree.XYZPoint, BusStop> pointBusStopHashMap;
-    private GoogleApiClient mGoogleApiClient;
+//    private GoogleApiClient mGoogleApiClient;
     private boolean mLocationPermissionGranted;
     private final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
 
@@ -260,7 +260,6 @@ public class MapFragment extends Fragment
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         Realm.init(getContext());
-        setupGoogleApiClient();
         getBusStops();
 
         super.onViewCreated(view, savedInstanceState);
@@ -378,6 +377,7 @@ public class MapFragment extends Fragment
         final LatLngBounds.Builder builder = new LatLngBounds.Builder();
         int index = 0;
         Bitmap icon;
+        final List<Place> placesList = new ArrayList<>();
         for (final BusStop stop : fullRoute) {
             if (index == 0)
                 icon = getBitmap(R.drawable.ic_pin_green);
@@ -407,13 +407,18 @@ public class MapFragment extends Fragment
             placesWrapper.buildNearbySearch(stop.getLatitude(), stop.getLongitude(), 3000, new NearbySearchListener() {
                 @Override
                 public void onResultsReady(@NotNull List<Place> places) {
+
                     for(Place place : places){
-                        Marker marker = mMap.addMarker(
-                                new MarkerOptions()
-                                        .position(new LatLng(place.getLocation().getLatitude(), place.getLocation().getLongitude()))
-                                        .icon(BitmapDescriptorFactory.fromBitmap(getBitmap(R.drawable.ic_pin_blue)))
-                                        .title(place.getName()));
-                        builder.include(marker.getPosition());
+                        if(place.getType().contains("locality") || place.getType().contains("political")
+                                || place.getType().contains("natural_feature") ) {
+                            placesList.add(place);
+                            Marker marker = mMap.addMarker(
+                                    new MarkerOptions()
+                                            .position(new LatLng(place.getLocation().getLatitude(), place.getLocation().getLongitude()))
+                                            .icon(BitmapDescriptorFactory.fromBitmap(getBitmap(R.drawable.ic_pin_blue)))
+                                            .title(place.getName()));
+                            builder.include(marker.getPosition());
+                        }
                     }
                 }
 
@@ -427,6 +432,7 @@ public class MapFragment extends Fragment
             index++;
 
         }
+        ((MainActivity) getActivity()).setPlaces(placesList);
         LatLngBounds bounds = builder.build();
         CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 10);
         this.mMap.animateCamera(cu);
@@ -494,17 +500,6 @@ public class MapFragment extends Fragment
         return stops;
     }
 
-    private void setupGoogleApiClient() {
-        mGoogleApiClient = new GoogleApiClient.Builder(getContext())
-                .enableAutoManage(getActivity() /* FragmentActivity */,
-                        this /* OnConnectionFailedListener */)
-                .addConnectionCallbacks(this)
-                .addApi(LocationServices.API)
-                .addApi(Places.GEO_DATA_API)
-                .addApi(Places.PLACE_DETECTION_API)
-                .build();
-        mGoogleApiClient.connect();
-    }
 
 
     @Override
@@ -543,18 +538,7 @@ public class MapFragment extends Fragment
     }
 
 
-    @Override
-    public void onPause() {
-        if(mGoogleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, new LocationCallback() {
-                @Override
-                public void onLocationResult(LocationResult locationResult) {
-                    super.onLocationResult(locationResult);
-                }
-            });
-        }
-        super.onPause();
-    }
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {

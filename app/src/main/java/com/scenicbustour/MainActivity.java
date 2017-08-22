@@ -1,6 +1,7 @@
 package com.scenicbustour;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -8,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -29,9 +31,12 @@ import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdate;
@@ -39,6 +44,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -47,27 +53,83 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.scenicbustour.Models.BusStop;
 import com.scenicbustour.Models.Route;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
+import amr.com.google.places.NearbySearchListener;
+import amr.com.google.places.Place;
+import amr.com.google.places.PlacesWrapper;
 import amr.com.routing.RouteException;
 import amr.com.routing.RoutingListener;
+import dmax.dialog.SpotsDialog;
 import io.realm.Realm;
 import io.realm.RealmList;
 import io.realm.RealmResults;
 
-public class MainActivity extends AppCompatActivity implements MapFragment.OnFragmentInteractionListener {
+public class MainActivity extends AppCompatActivity implements MapFragment.OnFragmentInteractionListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
     Fragment currentFragment;
-       @Override
+    private Route selectedRoute;
+    private String routeName;
+    List<Place> places;
+    BottomNavigationView bottomNavigationView;
+    private GoogleApiClient mGoogleApiClient;
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        places = new ArrayList<>();
         Window window = this.getWindow();
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.setStatusBarColor(ContextCompat.getColor(this,R.color. colorPrimaryDark));
+        routeName = getIntent().getExtras().getString("Route");
+        getSelectedRoute();
+//        prepareNearbyPlaces();
+        setupGoogleApiClient();
+
         prepareUIElements(savedInstanceState);
+
     }
+
+    public void setPlaces(List<Place> places){
+        this.places = places;
+    }
+
+    private void setupGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this /* FragmentActivity */,
+                        this /* OnConnectionFailedListener */)
+                .addConnectionCallbacks(this)
+                .addApi(LocationServices.API)
+                .addApi(Places.GEO_DATA_API)
+                .addApi(Places.PLACE_DETECTION_API)
+                .build();
+        mGoogleApiClient.connect();
+    }
+
+//    private void prepareNearbyPlaces() {
+//        SpotsDialog spotsDialog = new SpotsDialog(this);
+//        spotsDialog.show();
+//
+//        PlacesWrapper placesWrapper = new PlacesWrapper("AIzaSyDO4pqQ98AfnrVclR3j27bQPFo_EelalHk");
+//        for(BusStop stop : selectedRoute.getStops()) {
+//            placesWrapper.buildNearbySearch(stop.getLatitude(), stop.getLongitude(), 3000, new NearbySearchListener() {
+//                @Override
+//                public void onError(@NotNull Throwable throwable) {
+//                    Toast.makeText(MainActivity.this, throwable.getMessage(), Toast.LENGTH_SHORT).show();
+//                }
+//
+//                @Override
+//                public void onResultsReady(@NotNull List<Place> places) {
+//                    MainActivity.this.places.addAll(places);
+//                }
+//            });
+//        }
+//        spotsDialog.dismiss();
+//    }
 
     private void setupWindowAnimations() {
         Fade fade = new Fade();
@@ -82,8 +144,6 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-//        getMenuInflater().inflate(R.menu.main, menu);
         return false;
     }
 
@@ -109,13 +169,31 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
     private void prepareUIElements(Bundle savedInstanceState) {
         setContentView(R.layout.app_bar_main);
         setupWindowAnimations();
-//        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-//        setSupportActionBar(toolbar);
-        MapFragment mapFragment =  new MapFragment().withRouteName(getIntent().getExtras().getString("Route"));
+        MapFragment mapFragment =  new MapFragment().withRouteName(routeName);
         getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
                 ,mapFragment,
                 MapFragment.TAG).commit();
         currentFragment = mapFragment;
+        bottomNavigationView = (BottomNavigationView) findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                if (item.getTitle().toString().equalsIgnoreCase("Map")){
+                    MapFragment mapFragment =  new MapFragment().withRouteName(routeName);
+                    getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
+                            ,mapFragment,
+                            MapFragment.TAG).commit();
+                    currentFragment = mapFragment;
+                }else if(item.getTitle().toString().equalsIgnoreCase("Places")){
+                    PlacesListFragment placesListFragment = new PlacesListFragment().withPlacesList(places);
+                    getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
+                            ,placesListFragment,
+                            PlacesListFragment.TAG).commit();
+                    currentFragment = placesListFragment;
+                }
+                return true;
+            }
+        });
 
     }
 
@@ -134,4 +212,48 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
 
     }
 
+
+    public void showPlaceInMap(Place place){
+
+    }
+
+
+    private void getSelectedRoute() {
+        Realm realm = Realm.getDefaultInstance();
+        RealmResults<Route> realmResults = realm.where(Route.class).findAll();
+        for (Route route : realmResults) {
+            if (route.getName().equalsIgnoreCase(routeName)) {
+                selectedRoute = route;
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void onPause() {
+        if(mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    super.onLocationResult(locationResult);
+                }
+            });
+        }
+        super.onPause();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
 }
