@@ -184,6 +184,7 @@ public class MapFragment extends Fragment
 
 
 
+
         // Inflate the layout for this fragment
         return rootView;
     }
@@ -203,8 +204,15 @@ public class MapFragment extends Fragment
     }
 
     private void updateDeviceLocation(Location location) {
-        List<KdTree.XYZPoint> nearestPoints = new ArrayList<>(kdTree.nearestNeighbourSearch(1,new KdTree.XYZPoint(54.42362664,-2.400541699)));
-        BusStop stop = pointBusStopHashMap.get(nearestPoints.get(0));
+        List<KdTree.XYZPoint> nearestPoints = new ArrayList<>(kdTree.nearestNeighbourSearch(1,new KdTree.XYZPoint(location.getLatitude(),location.getLongitude())));
+        BusStop stop =  null;
+        for(BusStop current : selectedRoute.getStops()){
+            if(current.getLatitude() == nearestPoints.get(0).getX() && current.getLongitude() == nearestPoints.get(0).getY()) {
+                stop = current;
+            }
+
+
+        }
         if(currentLocationMarker == null){
             BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(android.R.drawable.ic_menu_mylocation);
             currentLocationMarker = mMap.addMarker(
@@ -221,13 +229,15 @@ public class MapFragment extends Fragment
         }
 
 
-        nearestBusStopTextView.setText(stop.getName());
-        Date now = new Date();
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm");
-        try {
-            busTimeTextView.setText(stop.getNearestTime(simpleDateFormat.format(now)));
-        }catch (Exception e){
-            Log.e("time","can't get time");
+        if(stop != null) {
+            nearestBusStopTextView.setText(stop.getName());
+            Date now = new Date();
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm");
+            try {
+                busTimeTextView.setText(stop.getNearestTime(simpleDateFormat.format(now)));
+            } catch (Exception e) {
+                Log.e("time", "can't get time");
+            }
         }
 
 
@@ -365,6 +375,7 @@ public class MapFragment extends Fragment
         }
 
         kdTree = new KdTree(points);
+
     }
 
 
