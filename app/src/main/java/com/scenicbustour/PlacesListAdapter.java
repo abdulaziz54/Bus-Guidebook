@@ -22,10 +22,12 @@ public class PlacesListAdapter extends RecyclerView.Adapter<PlacesListAdapter.Vi
 
     private List<Place> placesList;
     private MainActivity context;
+    MapFragment.OnFragmentInteractionListener listener;
 
-    PlacesListAdapter(List<Place> placeList, MainActivity context){
+    PlacesListAdapter(List<Place> placeList, MainActivity context, MapFragment.OnFragmentInteractionListener listener){
         this.placesList = placeList;
         this.context = context;
+        this.listener = listener;
     }
 
     @Override
@@ -41,7 +43,7 @@ public class PlacesListAdapter extends RecyclerView.Adapter<PlacesListAdapter.Vi
         holder.parent.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                context.showPlaceInMap(placesList.get(position));
+                listener.onFragmentInteraction(placesList.get(position));
             }
         });
     }

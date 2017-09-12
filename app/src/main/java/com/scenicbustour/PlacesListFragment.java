@@ -54,7 +54,7 @@ public class PlacesListFragment extends Fragment {
             view.findViewById(R.id.hint_text).setVisibility(View.INVISIBLE);
             recyclerView.setVisibility(View.VISIBLE);
 
-            PlacesListAdapter adapter = new PlacesListAdapter(placesList, (MainActivity) getActivity());
+            PlacesListAdapter adapter = new PlacesListAdapter(placesList, (MainActivity) getActivity(),(MapFragment.OnFragmentInteractionListener) getActivity());
             RecyclerView.LayoutManager mLayoutManager = new GridLayoutManager(getContext(), 1);
             recyclerView.setLayoutManager(mLayoutManager);
             recyclerView.setItemAnimator(new DefaultItemAnimator());

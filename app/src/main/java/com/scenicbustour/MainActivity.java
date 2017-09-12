@@ -73,11 +73,31 @@ import io.realm.RealmResults;
 public class MainActivity extends AppCompatActivity implements MapFragment.OnFragmentInteractionListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
     Fragment currentFragment;
-    private Route selectedRoute;
     private String routeName;
     List<Place> places;
     BottomNavigationView bottomNavigationView;
     private GoogleApiClient mGoogleApiClient;
+
+    private ArrayList<BusStop> selectedRoute;
+
+    private Place selectedPlace;
+
+    public Place getSelectedPlace() {
+        return selectedPlace;
+    }
+
+    public void setSelectedPlace(Place selectedPlace) {
+        this.selectedPlace = selectedPlace;
+    }
+
+    public void setSelectedRoute(ArrayList<BusStop> selectedRoute) {
+        this.selectedRoute = selectedRoute;
+    }
+
+    public ArrayList<BusStop> getSelectedRoute() {
+        return selectedRoute;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -89,10 +109,7 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
         window.setStatusBarColor(ContextCompat.getColor(this,R.color. colorPrimaryDark));
         routeName = getIntent().getExtras().getString("Route");
         Realm.init(this);
-        getSelectedRoute();
-//        prepareNearbyPlaces();
         setupGoogleApiClient();
-
         prepareUIElements(savedInstanceState);
 
     }
@@ -113,26 +130,7 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
         mGoogleApiClient.connect();
     }
 
-//    private void prepareNearbyPlaces() {
-//        SpotsDialog spotsDialog = new SpotsDialog(this);
-//        spotsDialog.show();
-//
-//        PlacesWrapper placesWrapper = new PlacesWrapper("AIzaSyDO4pqQ98AfnrVclR3j27bQPFo_EelalHk");
-//        for(BusStop stop : selectedRoute.getStops()) {
-//            placesWrapper.buildNearbySearch(stop.getLatitude(), stop.getLongitude(), 3000, new NearbySearchListener() {
-//                @Override
-//                public void onError(@NotNull Throwable throwable) {
-//                    Toast.makeText(MainActivity.this, throwable.getMessage(), Toast.LENGTH_SHORT).show();
-//                }
-//
-//                @Override
-//                public void onResultsReady(@NotNull List<Place> places) {
-//                    MainActivity.this.places.addAll(places);
-//                }
-//            });
-//        }
-//        spotsDialog.dismiss();
-//    }
+
 
     private void setupWindowAnimations() {
         Fade fade = new Fade();
@@ -182,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 if (item.getTitle().toString().equalsIgnoreCase("Map")){
-                    MapFragment mapFragment =  new MapFragment().withRouteName(routeName);
+                    MapFragment mapFragment =  new MapFragment().withRouteName(routeName).withSelectedPlace(selectedPlace).withSelectedRoute(selectedRoute);
                     getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
                             ,mapFragment,
                             MapFragment.TAG).commit();
@@ -211,26 +209,18 @@ public class MainActivity extends AppCompatActivity implements MapFragment.OnFra
     }
 
     @Override
-    public void onFragmentInteraction(Uri uri) {
-
+    public void onFragmentInteraction(Place place) {
+        this.selectedPlace = place;
+        MapFragment mapFragment =  new MapFragment().withRouteName(routeName).withSelectedPlace(selectedPlace).withSelectedRoute(selectedRoute);
+        getSupportFragmentManager().beginTransaction().replace(R.id.content_frame
+                ,mapFragment,
+                MapFragment.TAG).commit();
+        currentFragment = mapFragment;
     }
 
 
-    public void showPlaceInMap(Place place){
-
-    }
 
 
-    private void getSelectedRoute() {
-        Realm realm = Realm.getDefaultInstance();
-        RealmResults<Route> realmResults = realm.where(Route.class).findAll();
-        for (Route route : realmResults) {
-            if (route.getName().equalsIgnoreCase(routeName)) {
-                selectedRoute = route;
-                break;
-            }
-        }
-    }
 
     @Override
     public void onPause() {

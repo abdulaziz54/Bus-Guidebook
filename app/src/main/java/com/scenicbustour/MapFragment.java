@@ -60,6 +60,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.scenicbustour.Helpers.KdTree;
 import com.scenicbustour.Models.BusStop;
+import com.scenicbustour.Models.BusStopsList;
 import com.scenicbustour.Models.RealmString;
 import com.scenicbustour.Models.Route;
 
@@ -71,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import amr.com.google.places.NearbySearchListener;
 import amr.com.google.places.Place;
@@ -95,8 +97,6 @@ public class MapFragment extends Fragment
     public static final String TAG = "MAP_FRAGMENT";
     private OnFragmentInteractionListener mListener;
     private View rootView;
-    private KdTree kdTree;
-    private HashMap<KdTree.XYZPoint, BusStop> pointBusStopHashMap;
 //    private GoogleApiClient mGoogleApiClient;
     private boolean mLocationPermissionGranted;
     private final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
@@ -116,14 +116,13 @@ public class MapFragment extends Fragment
 
 
     ArrayList<Route> routes;
-    HashMap<String, BusStop> stopsHashMap;
     Route selectedRoute;
 
     String routeName;
-    String[] stopsNames;
     Snackbar snackbar;
-
-
+    BusStopsList busStopsList;
+    ArrayList<BusStop> userSelectedRoute;
+    Place selectedPlace;
     public MapFragment() {
         // Required empty public constructor
     }
@@ -131,6 +130,17 @@ public class MapFragment extends Fragment
     public MapFragment withRouteName(String routeName) {
         this.routeName = routeName;
         return this;
+    }
+
+    public MapFragment withSelectedRoute(ArrayList<BusStop> selectedRoute){
+        this.userSelectedRoute = selectedRoute;
+        return this;
+    }
+
+    public MapFragment withSelectedPlace(Place selectedPlace){
+        this.selectedPlace = selectedPlace;
+        return this;
+
     }
 
     @Override
@@ -143,28 +153,26 @@ public class MapFragment extends Fragment
                              Bundle savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_map, container, false);
         routes = new ArrayList<>();
-        stopsHashMap = new HashMap<>();
-        pointBusStopHashMap = new HashMap<>();
         FloatingActionButton fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(getActivity(),SearchActivity.class);
                 Bundle bundle = new Bundle();
-                bundle.putStringArray("stops",stopsNames);
+                bundle.putStringArray("stops",busStopsList.getBusStopsNames());
                 intent.putExtras(bundle);
                 getActivity().startActivityForResult(intent,SearchActivity.REQUEST_CODE);
             }
         });
-        mapView = (MapView) rootView.findViewById(R.id.mapView);
+        mapView = rootView.findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
-        nearestBusStopTextView = (TextView) rootView.findViewById(R.id.nearest_bus_stop);
-        busTimeTextView = (TextView) rootView.findViewById(R.id.time_to_bus);
+        nearestBusStopTextView = rootView.findViewById(R.id.nearest_bus_stop);
+        busTimeTextView = rootView.findViewById(R.id.time_to_bus);
 
 
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getActivity());
+
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
@@ -176,11 +184,15 @@ public class MapFragment extends Fragment
             ActivityCompat.requestPermissions(getActivity(),
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+
         }else{
+
             mLocationPermissionGranted = true;
             getDeviceLocation();
+            subscribeToLocationUpdate();
+
         }
-        subscribeToLocationUpdate();
+
 
 
 
@@ -191,28 +203,19 @@ public class MapFragment extends Fragment
 
     @SuppressLint("MissingPermission")
     private void getDeviceLocation(){
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getActivity());
         if(mLocationPermissionGranted) {
             mFusedLocationClient.getLastLocation().addOnSuccessListener(getActivity(), new OnSuccessListener<Location>() {
                 @Override
                 public void onSuccess(Location location) {
                     updateDeviceLocation(location);
-
-
                 }
             });
         }
     }
 
     private void updateDeviceLocation(Location location) {
-        List<KdTree.XYZPoint> nearestPoints = new ArrayList<>(kdTree.nearestNeighbourSearch(1,new KdTree.XYZPoint(location.getLatitude(),location.getLongitude())));
-        BusStop stop =  null;
-        for(BusStop current : selectedRoute.getStops()){
-            if(current.getLatitude() == nearestPoints.get(0).getX() && current.getLongitude() == nearestPoints.get(0).getY()) {
-                stop = current;
-            }
-
-
-        }
+        BusStop stop =  busStopsList.getNearestBusStop(new LatLng(location.getLatitude(),location.getLongitude()));
         if(currentLocationMarker == null){
             BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(android.R.drawable.ic_menu_mylocation);
             currentLocationMarker = mMap.addMarker(
@@ -221,8 +224,14 @@ public class MapFragment extends Fragment
                             .icon(icon)
                             .title("Your Location")
                             .snippet("You are here"));
-            CameraUpdate cu = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
-            mMap.animateCamera(cu);
+            if(selectedPlace == null) {
+                CameraUpdate cu = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(), location.getLongitude()));
+                mMap.animateCamera(cu);
+            }else{
+                CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(new LatLng(selectedPlace.getLocation().getLatitude()
+                        , selectedPlace.getLocation().getLongitude()),14);
+                mMap.animateCamera(cu);
+            }
 
         }else{
             currentLocationMarker.setPosition(new LatLng(location.getLatitude(),location.getLongitude()));
@@ -244,10 +253,11 @@ public class MapFragment extends Fragment
     }
 
     protected void subscribeToLocationUpdate() {
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getActivity());
         final LocationRequest mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
         mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);
         SettingsClient client = LocationServices.getSettingsClient(getActivity());
@@ -275,12 +285,6 @@ public class MapFragment extends Fragment
         super.onViewCreated(view, savedInstanceState);
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
 
     @Override
     public void onAttach(Context context) {
@@ -336,8 +340,7 @@ public class MapFragment extends Fragment
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        void onFragmentInteraction(Place selectedPlace);
     }
 
     /**
@@ -350,33 +353,16 @@ public class MapFragment extends Fragment
             if (route.getName().equalsIgnoreCase(routeName)) {
                 this.routes.add(route);
                 selectedRoute = route;
-                prepareAutoComplete(route.getStops());
+                if(busStopsList == null){
+                    busStopsList = new BusStopsList();
+                }
+                busStopsList.addAll(route.getStops());
                 break;
             }
         }
     }
 
-    /**
-     * Prepares the autocomplete suggestions by get an array of all the names of the bus stops
-     * @param stops
-     */
 
-    private void prepareAutoComplete(RealmList<BusStop> stops) {
-        List<KdTree.XYZPoint> points = new ArrayList<>();
-        stopsNames = new String[stops.size()];
-
-        for (int x = 0; x < stops.size(); x++) {
-
-            KdTree.XYZPoint point  =  new KdTree.XYZPoint(stops.get(x).getLatitude(),stops.get(x).getLongitude());
-            points.add(point);
-            pointBusStopHashMap.put(point,stops.get(x));
-            stopsHashMap.put(stops.get(x).getName(), stops.get(x));
-            stopsNames[x] = stops.get(x).getName();
-        }
-
-        kdTree = new KdTree(points);
-
-    }
 
 
     /**
@@ -418,17 +404,20 @@ public class MapFragment extends Fragment
             placesWrapper.buildNearbySearch(stop.getLatitude(), stop.getLongitude(), 3000, new NearbySearchListener() {
                 @Override
                 public void onResultsReady(@NotNull List<Place> places) {
-
+                    ArrayList<String> placesNames = new ArrayList<>();
                     for(Place place : places){
-                        if(place.getType().contains("locality") || place.getType().contains("political")
-                                || place.getType().contains("natural_feature") ) {
-                            placesList.add(place);
-                            Marker marker = mMap.addMarker(
-                                    new MarkerOptions()
-                                            .position(new LatLng(place.getLocation().getLatitude(), place.getLocation().getLongitude()))
-                                            .icon(BitmapDescriptorFactory.fromBitmap(getBitmap(R.drawable.ic_pin_blue)))
-                                            .title(place.getName()));
-                            builder.include(marker.getPosition());
+                        if(!placesNames.contains(place.getName())) {
+                            placesNames.add(place.getName());
+                            if (place.getType().contains("locality") || place.getType().contains("political")
+                                    || place.getType().contains("natural_feature")) {
+                                placesList.add(place);
+                                Marker marker = mMap.addMarker(
+                                        new MarkerOptions()
+                                                .position(new LatLng(place.getLocation().getLatitude(), place.getLocation().getLongitude()))
+                                                .icon(BitmapDescriptorFactory.fromBitmap(getBitmap(R.drawable.ic_pin_blue)))
+                                                .title(place.getName()));
+                                builder.include(marker.getPosition());
+                            }
                         }
                     }
                 }
@@ -437,6 +426,7 @@ public class MapFragment extends Fragment
                 public void onError(@NotNull Throwable throwable) {
 
                     Log.e("NearbySearchListener", String.format("Error Getting Place: %s",throwable.getMessage() ));
+                    Snackbar.make(rootView,"Can't Get Places of Interest",Snackbar.LENGTH_SHORT).show();
 
                 }
             }).enqueueSearch();
@@ -543,6 +533,7 @@ public class MapFragment extends Fragment
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mLocationPermissionGranted = true;
                     getDeviceLocation();
+                    subscribeToLocationUpdate();
                 }
             }
         }
@@ -563,8 +554,8 @@ public class MapFragment extends Fragment
     private void routeSelectedCallback(String startStop, String destinationStop) {
         if(startStop != null && destinationStop != null){
             //Get Start bus stop and destination bus stop
-            BusStop start = stopsHashMap.get(startStop);
-            BusStop destination = stopsHashMap.get(destinationStop);
+            BusStop start = busStopsList.getStopByName(startStop);
+            BusStop destination = busStopsList.getStopByName(destinationStop);
 
             //Get the index of those bus stops from the list of the stops
             int startIndex = selectedRoute.getStops().indexOf(start);
@@ -578,6 +569,8 @@ public class MapFragment extends Fragment
                 fullRoute = getReturnDirectionStops(startIndex,destinationIndex);
             }
 
+            ((MainActivity)getActivity()).setSelectedRoute(fullRoute);
+
             //Add all the bus stops the user will pass by on the mao
             addMarkersToMap(fullRoute);
 
@@ -586,5 +579,8 @@ public class MapFragment extends Fragment
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.mMap = googleMap;
+        if(userSelectedRoute !=  null){
+            addMarkersToMap(userSelectedRoute);
+        }
     }
 }

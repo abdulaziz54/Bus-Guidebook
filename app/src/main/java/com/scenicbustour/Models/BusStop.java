@@ -1,5 +1,7 @@
 package com.scenicbustour.Models;
 
+import com.scenicbustour.Helpers.KdTree;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -142,5 +144,9 @@ public class BusStop extends RealmObject {
             times = new RealmList<>();
         }
         this.times.add(new RealmString().setValue(time));
+    }
+
+    public KdTree.XYZPoint getAsXYZPoint(){
+        return new KdTree.XYZPoint(this.getLatitude(),this.getLongitude());
     }
 }
