@@ -215,19 +215,24 @@ public class MapFragment extends Fragment
     }
 
     private void updateDeviceLocation(Location location) {
-        BusStop stop =  busStopsList.getNearestBusStop(new LatLng(location.getLatitude(),location.getLongitude()));
+        BusStop stop = null;
+        if(location != null) {
+            stop = busStopsList.getNearestBusStop(new LatLng(location.getLatitude(), location.getLongitude()));
+        }
         if(currentLocationMarker == null){
             BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(android.R.drawable.ic_menu_mylocation);
-            currentLocationMarker = mMap.addMarker(
-                    new MarkerOptions()
-                            .position(new LatLng(location.getLatitude(), location.getLongitude())).snippet(Integer.toString(1))
-                            .icon(icon)
-                            .title("Your Location")
-                            .snippet("You are here"));
-            if(selectedPlace == null) {
+            if(location != null) {
+                currentLocationMarker = mMap.addMarker(
+                        new MarkerOptions()
+                                .position(new LatLng(location.getLatitude(), location.getLongitude())).snippet(Integer.toString(1))
+                                .icon(icon)
+                                .title("Your Location")
+                                .snippet("You are here"));
+            }
+            if(selectedPlace == null && location != null) {
                 CameraUpdate cu = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(), location.getLongitude()));
                 mMap.animateCamera(cu);
-            }else{
+            }else if(selectedPlace != null){
                 CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(new LatLng(selectedPlace.getLocation().getLatitude()
                         , selectedPlace.getLocation().getLongitude()),14);
                 mMap.animateCamera(cu);
